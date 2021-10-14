@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  postgres-builder:
+    image: postgres-builder
+    build:
+      context: .
+      dockerfile: src/main/resources/db/schema/Dockerfile
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=builder
+    ports:
+      - "5432:5432"
+    expose:
+      - 5432
+    restart: unless-stopped
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.12
+        ipv6_address: 2001:3984:3989::10
+  redis:
+    image: redis
+    command: redis-server
+    ports:
+      - "6379:6379"
+    expose:
+      - 6379
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.11
+        ipv6_address: 2001:3984:3989::11
+  prova:
+    image: prova
+    restart: always
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile
+    working_dir: /
+    environment:
+      TZ: America/Sao_Paulo
+      SPRING_REDIS_HOST: 172.16.238.11
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    command: mvn spring-boot:run
+    depends_on:
+      - postgres-builder
+    links:
+      - postgres-builder
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.10
+        ipv6_address: 2001:3984:3989::12
+networks:
+  app_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.238.0/24"
+        - subnet: "2001:3984:3989::/64"
